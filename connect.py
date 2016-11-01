@@ -6,6 +6,8 @@ Created on Thu Sep  1 17:15:16 2016
 """
 import json 
 import http.client
+import datetime
+import dateutil.parser as dp
 
 url  = 'challenge.code2040.org' # API URL to connect.
 token = json.dumps({'token':'befdeea19c258349d4baebaa94ff93e0'}) # Unique token for API.
@@ -34,6 +36,8 @@ def searchHaystack(dictionary, firstIndexName, secondIndexName):
     prefixArray = []
     
     for index in range(len(searchArray)):
+        # I believed using a series of if else staments here was better then 
+        # Dictionary mapping. Python does not have any switch case staments to my knowledge        
         if(firstIndexName == "needle" and identifyer == searchArray[index]):
             return index
         elif firstIndexName == "prefix" and not (searchArray[index].startswith(identifyer)):    
@@ -41,8 +45,15 @@ def searchHaystack(dictionary, firstIndexName, secondIndexName):
             
     return prefixArray
 
-def addTimeIntervall():
-    return 0
+# Adds a time interval to a date in ISO 80 format
+def addTimeIntervall(date, secs, utcOffset):
+    standerdTime = dp.parse(date)    
+    return convertToIso(standerdTime + datetime.timedelta(seconds=secs), utcOffset)
+
+#Converts for Standered Date Object to ISO 8601 format
+def convertToIso(date, utcOffset):
+    date = date.isoformat().split('+')
+    return date[0]+ utcOffset 
                  
 # STEP 1
 try:
@@ -53,19 +64,22 @@ except http.client.HTTPException:
     
 # STEP 2
 string = connect('/api/reverse', token)
-response = sendResponse('/api/reverse/validate', 'string', string[::-1])
+sendResponse('/api/reverse/validate', 'string', string[::-1])
 
 # STEP 3
 dictionary = connect('/api/haystack', token)
 index = searchHaystack(json.loads(dictionary), "needle", "haystack")
-response = sendResponse('/api/haystack/validate', 'needle', index)
+sendResponse('/api/haystack/validate', 'needle', index)
 
 # STEP 4
 dictionary = connect('/api/prefix', token)
 prefixArray = searchHaystack(json.loads(dictionary), "prefix", "array")
-response = sendResponse('/api/prefix/validate', 'array', prefixArray)
+sendResponse('/api/prefix/validate', 'array', prefixArray)
 
 # STEP 5
 dictionary = connect('/api/dating', token)
-print(json.loads(dictionary).get('datestamp'))
-print(json.loads(dictionary).get('interval'))
+date = json.loads(dictionary).get('datestamp')
+utcOffset = date[-1:] 
+secs = json.loads(dictionary).get('interval')
+newDate = addTimeIntervall(date, secs, utcOffset)
+sendResponse('/api/dating/validate', 'datestamp', newDate)
